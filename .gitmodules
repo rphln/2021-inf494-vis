@@ -1,0 +1,3 @@
+[submodule "zreader"]
+	path = zreader
+	url = https://github.com/pushshift/zreader
