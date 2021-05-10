@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>INF 494</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.2/css/bulma.min.css"
+      integrity="sha256-O8SsQwDg1R10WnKJNyYgd9J3rlom+YSVcGbEF5RmfFk="
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/plotly.js-dist@1.58.4/plotly.js"
+      integrity="sha256-sXVhJtp6sp3Ibq9nqcOHHgyV+7p8jdwxbE28NcTagIQ="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/d3@6.7.0/dist/d3.min.js"
+      integrity="sha256-+7jaYCp29O1JusNWHaYtgUn6EhuP0VaFuswhNV06MyI="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/stimulus@2.0.0/dist/stimulus.umd.js"
+      integrity="sha256-pFJFRha49y6Ydzwz75iRZDnSiDRBxLK7Dg0lRcduU4I="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
+      integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k="
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      #chart {
+        min-height: 80vh;
+      }
+    </style>
+  </head>
+
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Text Models Cross-Comparison Tool</h1>
+        <p class="subtitle">
+          Compare how different text models relate to each other on multiple
+          datasets.
+        </p>
+      </div>
+    </section>
+    <main class="container" data-controller="app">
+      <div class="columns my-4 is-centered">
+        <div id="chart" data-app-target="chart" class="column"></div>
+      </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
