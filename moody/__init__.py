@@ -1,136 +1,133 @@
 import json
 import pickle
-from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from flask import Flask, render_template
-from flask.json import jsonify
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from joblib import Memory
 from sklearn.pipeline import Pipeline
+from tqdm import tqdm
 
 from zreader.zreader import Zreader
 
-ROWS = 2_000_000
+CACHE_DIR = Path("var/cache")
 
 REDDIT = Path("var/The Pushshift Reddit Dataset.zst")
 TELEGRAM = Path("var/The Pushshift Telegram Dataset.zst")
 
+ROWS = 3_000_000
+
 CATEGORIES = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
 
-ARCHETYPES = {
-    "alt.atheism": "religion",
-    "comp.graphics": "computers",
-    "comp.os.ms-windows.misc": "computers",
-    "comp.sys.ibm.pc.hardware": "computers",
-    "comp.sys.mac.hardware": "computers",
-    "comp.windows.x": "computers",
-    "misc.forsale": "commerce",
-    "rec.autos": "vehicles",
-    "rec.motorcycles": "vehicles",
-    "rec.sport.baseball": "sports",
-    "rec.sport.hockey": "sports",
-    "sci.crypt": "science",
-    "sci.electronics": "science",
-    "sci.med": "science",
-    "sci.space": "science",
-    "soc.religion.christian": "religion",
-    "talk.politics.guns": "politics",
-    "talk.politics.mideast": "politics",
-    "talk.politics.misc": "politics",
-    "talk.religion.misc": "religion",
-}
+app = FastAPI(title=__name__)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
 
-app = Flask(__name__)
+memory = Memory(CACHE_DIR, mmap_mode="r")
 
 
-def load_dataset(key: str, source: Path, cache: Path):
-    if cache.is_file():
-        return pd.read_pickle(cache)
-    else:
-        reader = Zreader(source, chunk_size=2 ** 26)
-        corpus = set()
+@memory.cache
+def load_dataset(key: str, source: Path):
+    reader = Zreader(source, chunk_size=2 ** 26)
+    corpus = set()
 
-        for entry in reader.readlines():
-            try:
-                entry = json.loads(entry)
-            except:
-                continue
+    for entry in reader.readlines():
+        try:
+            entry = json.loads(entry)
+        except:
+            continue
 
-            if not (message := entry.get(key)):
-                continue
+        if not (message := entry.get(key)):
+            continue
 
-            corpus.add(message)
+        corpus.add(message)
 
-            if len(corpus) >= ROWS:
-                break
+        if len(corpus) >= ROWS:
+            break
 
-        df = pd.DataFrame(corpus, columns=["body"])
-        df.to_pickle(cache, compression=None)
-
-        return df
+    return pd.DataFrame(corpus, columns=["body"])
 
 
 def load_reddit_corpus():
-    df = load_dataset("body", REDDIT, REDDIT.with_suffix(".obj"))
+    df = load_dataset(key="body", source=REDDIT)
     df["dataset"] = "Reddit"
 
     return df
 
 
 def load_telegram_corpus():
-    df = load_dataset("message", TELEGRAM, TELEGRAM.with_suffix(".obj"))
+    df = load_dataset(key="message", source=TELEGRAM)
     df["dataset"] = "Telegram"
 
     return df
 
 
-@lru_cache
 def load_corpus():
     return pd.concat([load_reddit_corpus(), load_telegram_corpus()])
 
 
-@app.route("/")
-def root():
-    return render_template("index.html")
-
-
-@app.route("/query/<query>")
-@app.route("/query/")
-@lru_cache
-def data(query: Optional[str] = None):
-    with open("var/subject-classifier.obj", "rb") as file:
-        subject_classifier: Pipeline = pickle.load(file)
-
-    with open("var/sentiment-classifier.obj", "rb") as file:
-        sentiment_classifier: Pipeline = pickle.load(file)
-
+def classify_toxicity(corpus: pd.DataFrame):
     with open("var/toxicity-classifier.obj", "rb") as file:
         toxicity_classifier: Pipeline = pickle.load(file)
 
-    corpus = load_corpus()
+    corpus[CATEGORIES] = toxicity_classifier.predict(
+        tqdm(corpus.body, desc="Toxicity classification")
+    )
 
-    corpus[CATEGORIES] = toxicity_classifier.predict(corpus.body)
+    return corpus
 
-    # Also group similar subjects into an `archetype`.
-    corpus["subject"] = subject_classifier.predict(corpus.body)
-    corpus["archetype"] = corpus["subject"].map(ARCHETYPES)
 
-    sentiments = sentiment_classifier.predict(corpus.body)
+def classify_subject(corpus: pd.DataFrame):
+    with open("var/subject-classifier.obj", "rb") as file:
+        subject_classifier: Pipeline = pickle.load(file)
+
+    corpus["subject"] = subject_classifier.predict(
+        tqdm(corpus.body, desc="Subject classification")
+    )
+
+    return corpus
+
+
+def classify_sentiment(corpus: pd.DataFrame):
+    with open("var/sentiment-classifier.obj", "rb") as file:
+        sentiment_classifier: Pipeline = pickle.load(file)
+
+    sentiments = sentiment_classifier.predict(
+        tqdm(corpus.body, desc="Sentiment classification")
+    )
 
     # Ensure that we get no errors if a category is missing.
     corpus["sentiment"] = pd.Categorical(
         sentiments, ["positive", "negative", "neutral"]
     )
 
-    # Convert the categorical `sentiment` to one-hot.
+    # Also convert the categorical `sentiment` to one-hot.
     corpus = pd.get_dummies(corpus, columns=["sentiment"], prefix="", prefix_sep="")
+
+    return corpus
+
+
+@memory.cache
+def parse():
+    corpus = load_corpus()
+
+    corpus = classify_sentiment(corpus)
+    corpus = classify_toxicity(corpus)
+    corpus = classify_subject(corpus)
+
+    return corpus
+
+
+@app.get("/")
+async def index(query: Optional[str] = None):
+    corpus: pd.DataFrame = parse()
 
     if query:
         try:
-            corpus = corpus.query(query)
+            corpus.query(query, inplace=True)
         except Exception as error:
-            return jsonify({"error": str(error)}), 400
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
     stats = {
         "body": "count",
@@ -148,10 +145,6 @@ def data(query: Optional[str] = None):
     }
 
     grouped = corpus.groupby(["dataset", "subject"]).agg(stats)
-    return grouped.to_json(orient="table", indent=2)
+    content = grouped.to_json(orient="table", indent=2)
 
-
-@app.after_request
-def after_request(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
+    return Response(content, media_type="application/json")

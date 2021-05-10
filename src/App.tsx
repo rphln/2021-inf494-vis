@@ -1,11 +1,16 @@
-import { Component, FormEventHandler } from "react";
-import Plot from "react-plotly.js";
-
 import "bulma/bulma.sass";
-import { flatMap, groupBy, map } from "lodash";
-import { Data, Layout } from "plotly.js";
 
-type Entry = {
+import { Component, FormEventHandler, MouseEventHandler } from "react";
+import { groupBy, isEmpty, set } from "lodash";
+import { LayoutAxis } from "plotly.js";
+
+import { QueryDatasetShortcuts, QueryDatasetForm } from "./QueryDatasetForm";
+import { buildURL } from "./common";
+import { Tabbed } from "./Tabbed";
+import { TernaryPlot } from "./TernaryPlot";
+import { ToxicityPlot } from "./ToxicityPlot";
+
+export type Entry = {
   subject: string;
   dataset: string;
   positive: number;
@@ -20,161 +25,79 @@ type Entry = {
   identity_hate: number;
 };
 
-type Entries = {
+export type Entries = {
   [source: string]: Entry[];
 };
 
-type ColorMap = {
+export type ColorMap = {
   [source: string]: string;
 };
 
 type AppState = {
+  isLoading: boolean;
   query?: string;
   error?: string;
   entries: Entries;
 };
 
-const makeAxis = (title: string) => {
-  return {
-    title,
-
-    titlefont: { size: 20 },
-    tickfont: { size: 15 },
-
-    gridcolor: "Gainsboro",
-    linecolor: "Gainsboro",
-    tickcolor: "Gainsboro",
-  };
-};
-
-function ToxicityPlot({
-  entries,
-  colors,
-}: {
-  entries: Entries;
-  colors: ColorMap;
-}) {
-  const data: Data[] = flatMap(entries, (items, name) => {
-    return map(items, (d) => {
-      return {
-        name: d.subject,
-
-        type: "scatter",
-        mode: "lines",
-
-        x: [
-          "toxic",
-          "severe_toxic",
-          "obscene",
-          "threat",
-          "insult",
-          "identity_hate",
-        ],
-        y: [
-          d.toxic / d.body,
-          d.severe_toxic / d.body,
-          d.obscene / d.body,
-          d.threat / d.body,
-          d.insult / d.body,
-          d.identity_hate / d.body,
-        ],
-
-        marker: {
-          color: colors[name],
-          opacity: 0.75,
-          size: 15,
-        },
-      };
-    });
-  });
-
-  const layout = {
-    hovermode: "closest",
-
-    width: 1280,
-    height: 720,
-
-    xaxis: makeAxis("Toxicity"),
-    yaxis: makeAxis("Ratio"),
-  } as Layout;
-
-  return <Plot data={data} layout={layout} />;
-}
-
-function TernaryPlot({
-  entries,
-  colors,
-}: {
-  entries: Entries;
-  colors: ColorMap;
-}) {
-  const ternaries: Data[] = map(entries, (items, name) => ({
-    name,
-
-    type: "scatterternary",
-    mode: "markers",
-
-    a: map(items, "positive"),
-    b: map(items, "negative"),
-    c: map(items, "neutral"),
-
-    text: map(items, "subject"),
-
-    hovertemplate: `%{text}
-    <br />Positive: %{a}
-    <br />Negative: %{b}
-    <br />Neutral: %{c}`,
-
-    marker: {
-      color: colors[name],
-      opacity: 0.75,
-      size: 15,
-    },
-  }));
-
-  const layout = {
-    width: 1280,
-    height: 720,
-
-    ternary: {
-      aaxis: makeAxis("Positive"),
-      baxis: makeAxis("Negative"),
-      caxis: makeAxis("Neutral"),
-    },
-  };
-
-  return <Plot data={ternaries} layout={layout} />;
-}
-
 class App extends Component<{}, AppState> {
   queryInput?: HTMLInputElement | null;
+  appendQuery?: (value: string) => void;
 
   constructor(props: {}) {
     super(props);
 
     this.state = {
       query: "",
+      isLoading: true,
       entries: {},
     };
   }
 
-  static colors: ColorMap = {
+  /**
+   * The fields which are available on the quick dial.
+   */
+  private static quickDialFields = [
+    "body",
+    "dataset",
+    "subject",
+    "sentiment",
+    "positive",
+    "negative",
+    "neutral",
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate",
+  ];
+
+  static colorMap: ColorMap = {
     Reddit: "#FE6100",
     Telegram: "#648FFF",
   };
 
   async refresh() {
-    const response = await fetch(
-      `http://127.0.0.1:5000/query/${this.state.query}`
-    );
-    const stats = await response.json();
+    this.setState({ isLoading: true }, async () => {
+      const endpoint = buildURL("/", { query: this.state.query ?? "" });
 
-    if (!response.ok) {
-      return this.setState({ error: stats.error });
-    }
+      const response = await fetch(endpoint);
+      const { data, detail } = await response.json();
 
-    this.setState({
-      entries: groupBy(stats.data, "dataset"),
+      const state = {
+        isLoading: false,
+      };
+
+      if (!response.ok) {
+        return this.setState({ ...state, error: detail });
+      }
+
+      this.setState({
+        ...state,
+        error: undefined,
+        entries: groupBy(data, "dataset"),
+      });
     });
   }
 
@@ -183,12 +106,28 @@ class App extends Component<{}, AppState> {
   }
 
   /**
+   * Creates an event handler to append a `value` to the query text input.
+   *
+   * @param value The value which will be appended.
+   * @returns The event handler.
+   */
+  private onShortcutClick =
+    (value: string): MouseEventHandler<HTMLButtonElement> =>
+    (event) => {
+      event.preventDefault();
+      return this.appendQuery?.call(undefined, value);
+    };
+
+  /**
+   * Called when a point in a graph is clicked.
+   */
+  private onPointClick = ({ points: [{ text }] }: any) =>
+    this.appendQuery?.call(this, `"${text}",`);
+
+  /**
    * Handles the query form submission.
    */
-  private handleQuerySubmit: FormEventHandler<HTMLFormElement> = (
-    event
-  ) => {
-    console.log(this.queryInput?.value);
+  private handleQuerySubmit: FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
 
     this.setState({ query: this.queryInput?.value }, () => {
@@ -196,96 +135,54 @@ class App extends Component<{}, AppState> {
     });
   };
 
-  /**
-   * Creates an event handler to append a `value` to the query text input.
-   */
-  private appendToQuery = (value: string) => (event: any) => {
-    event.preventDefault();
-
-    if (!this.queryInput) return;
-
-    this.queryInput.value += value;
-    this.queryInput.focus();
-  };
-
   render() {
-    const { error, entries } = this.state;
+    const { error, entries, isLoading } = this.state ?? {};
 
-    const formErrorLabel = error ? (
-      <p className="help is-danger">{error}</p>
-    ) : (
-      <></>
-    );
-
-    const fields = [
-      "body",
-      "dataset",
-      "subject",
-      "sentiment",
-      "positive",
-      "negative",
-      "neutral",
-      "toxic",
-      "severe_toxic",
-      "obscene",
-      "threat",
-      "insult",
-      "identity_hate",
-    ];
-
-    const fieldToButton = (field: string) => (
-      <button
-        key={field}
-        className="button"
-        onClick={this.appendToQuery(field)}
-      >
-        {field}
-      </button>
-    );
-
-    const formHelpLabel = (
-      <div className="buttons has-addons is-centered">{fields.map(fieldToButton)}</div>
-    );
+    const components = {
+      Polarity: (
+        <TernaryPlot
+          width={1280}
+          height={720}
+          entries={entries}
+          colors={App.colorMap}
+          onPointClick={this.onPointClick}
+        />
+      ),
+      Toxicity: (
+        <ToxicityPlot
+          width={1280}
+          height={720}
+          entries={entries}
+          colors={App.colorMap}
+          onPointClick={this.onPointClick}
+        />
+      ),
+    };
 
     return (
       <>
-        <div className="columns is-centered">
-          <div className="column is-full">
-            <form onSubmit={this.handleQuerySubmit}>
-              <label className="label" htmlFor="query">
-                Query the dataset
-              </label>
-              <div className="field has-addons">
-                <div className="control is-expanded">
-                  <input
-                    ref={(input) => (this.queryInput = input)}
-                    className={`input ${error ? "is-danger" : ""}`}
-                    name="query"
-                    type="text"
-                    placeholder="Enter a query"
-                  />
-                </div>
-                <div className="control">
-                  <button className="button is-info" type="submit">
-                    Query
-                  </button>
-                </div>
-              </div>
-              {formErrorLabel}
-              {formHelpLabel}
-            </form>
+        <section className="section">
+          <div className="box">
+            <div className="block">
+              <QueryDatasetForm
+                error={error}
+                isLoading={isLoading}
+                onSubmit={this.handleQuerySubmit}
+                refQueryInput={(element) => (this.queryInput = element)}
+                refAppendQuery={(appendQuery) =>
+                  (this.appendQuery = appendQuery)
+                }
+              />
+            </div>
+
+            <QueryDatasetShortcuts
+              fields={App.quickDialFields}
+              onShortcutClick={this.onShortcutClick}
+            />
           </div>
-        </div>
-        <div className="columns is-centered">
-          <div className="column is-full">
-            <TernaryPlot entries={entries} colors={App.colors} />
-          </div>
-        </div>
-        <div className="columns is-centered">
-          <div className="column is-full">
-            <ToxicityPlot entries={entries} colors={App.colors} />
-          </div>
-        </div>
+        </section>
+
+        <Tabbed components={components} initial="Polarity" minHeight={768} />
       </>
     );
   }
