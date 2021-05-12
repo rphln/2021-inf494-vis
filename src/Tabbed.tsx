@@ -42,29 +42,25 @@ export class Tabbed extends Component<TabbedProperties, TabbedState> {
     const activeComponent = components[activeLabel];
 
     const makeTabEntry = (name: string) => {
-      const tabOnClick: MouseEventHandler<HTMLButtonElement> = (event) => {
+      const tabOnClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
         event.preventDefault();
         this.setActiveTab(name);
       };
 
-      const active = activeLabel === name ? "is-active" : "is-light";
-
       return (
-        <button
-          key={name}
-          onClick={tabOnClick}
-          className={`button is-link ${active}`}
-        >
-          {name}
-        </button>
+        <li key={name} className={activeLabel === name ? "is-active" : ""}>
+          <a href="#" role="button" onClick={tabOnClick}>
+            {name}
+          </a>
+        </li>
       );
     };
 
     return (
       <section className="section">
-        <nav className="buttons has-addons is-centered">
-          {map(keys(components), makeTabEntry)}
-        </nav>
+        <div className="tabs is-toggle is-centered">
+          <ul>{map(keys(components), makeTabEntry)}</ul>
+        </div>
 
         <div style={{ minHeight }}>{activeComponent}</div>
       </section>
