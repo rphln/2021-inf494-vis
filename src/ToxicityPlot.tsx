@@ -1,5 +1,5 @@
 import Plot from "react-plotly.js";
-import { flatMap, map } from "lodash";
+import { flatMap, keys, map, values } from "lodash";
 import { Data, Layout, PlotMouseEvent } from "plotly.js";
 import { Entries, ColorMap, Entry } from "./App";
 import { makeAxis } from "common";
@@ -19,32 +19,46 @@ export function ToxicityPlot({
   height: number;
   onPointClick?: (event: Readonly<PlotMouseEvent>) => void;
 }) {
-  const x: Array<keyof Entry> = [
-    "toxic",
-    "severe_toxic",
-    "obscene",
-    "threat",
-    "insult",
-    "identity_hate",
-  ];
+  type Toxicity = keyof Entry &
+    (
+      | "toxic_sum"
+      | "severe_toxic_sum"
+      | "obscene_sum"
+      | "threat_sum"
+      | "insult_sum"
+      | "identity_hate_sum"
+    );
 
-  const data: Data[] = flatMap(entries, (items, name) => {
-    return map(items, (d) => {
+  const toxicity: Record<Toxicity, string> = {
+    toxic_sum: "Toxic",
+    severe_toxic_sum: "Severely toxic",
+    obscene_sum: "Obscene",
+    threat_sum: "Threat",
+    insult_sum: "Insult",
+    identity_hate_sum: "Identity hate",
+  };
+
+  const data: Data[] = flatMap(entries, (bySubject, sourceName) => {
+    return map(bySubject, (subjectStats) => {
       return {
         type: "scatter",
         mode: "lines",
 
-        name: d.subject,
-        text: map(x, (_) => d.subject),
+        name: subjectStats.subject,
+        text: map(toxicity, (_) => subjectStats.subject),
 
         hovertemplate: `<b>%{text}</b>
-        <br /> %{x}: %{y}
+        <br />%{xaxis.title.text}: %{x}
+        <br />%{yaxis.title.text}: %{y}
         <extra></extra>`,
 
-        x,
-        y: map(x, (key) => (d[key] as number) / d.body),
+        x: values(toxicity),
+        y: map(
+          keys(toxicity) as Iterable<Toxicity>,
+          (key) => subjectStats[key] / subjectStats["body_count"]
+        ),
 
-        line: { color: colors[name] },
+        line: { color: colors[sourceName] },
       };
     });
   });
@@ -57,8 +71,8 @@ export function ToxicityPlot({
 
     hovermode: "closest",
 
-    xaxis: makeAxis("Kind"),
-    yaxis: makeAxis("Ratio", { tickformat: ",.0%" }),
+    xaxis: makeAxis("Classification"),
+    yaxis: makeAxis("Occurrences", { tickformat: ",.0%" }),
   };
 
   return (

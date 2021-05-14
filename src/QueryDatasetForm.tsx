@@ -98,7 +98,11 @@ export class QueryDatasetForm extends Component<
             {formErrorLabel}
           </div>
           <div className="control">
-            <button className={`button is-link ${loading}`} type="submit">
+            <button
+              className={`button is-link ${loading}`}
+              disabled={isLoading}
+              type="submit"
+            >
               Query
             </button>
           </div>

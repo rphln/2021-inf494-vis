@@ -19,17 +19,17 @@ export function TernaryPlot({
   height: number;
   onPointClick?: (event: Readonly<PlotMouseEvent>) => void;
 }) {
-  const data: Data[] = map(entries, (items, name) => ({
-    name,
+  const data: Data[] = map(entries, (bySubject, sourceName) => ({
+    name: sourceName,
 
     type: "scatterternary",
     mode: "markers",
 
-    a: map(items, "positive"),
-    b: map(items, "negative"),
-    c: map(items, "neutral"),
+    a: map(bySubject, "positive_sum"),
+    b: map(bySubject, "negative_sum"),
+    c: map(bySubject, "neutral_sum"),
 
-    text: map(items, "subject"),
+    text: map(bySubject, "subject"),
 
     hovertemplate: `<b>%{text}</b>
     <br />Positive: %{a}
@@ -38,14 +38,14 @@ export function TernaryPlot({
     <extra></extra>`,
 
     marker: {
-      color: colors[name],
+      color: colors[sourceName],
       opacity: 0.75,
       size: 15,
     },
   }));
 
   const baseLayout: Partial<Layout> = {
-    title: "Polarity ratios across subjects",
+    title: "Sentiment ratios across subjects",
 
     width,
     height,
@@ -62,10 +62,6 @@ export function TernaryPlot({
       data={data}
       layout={{ ...baseLayout, ...layout }}
       onClick={onPointClick}
-      config={{
-        showEditInChartStudio: true,
-        plotlyServerURL: "https://chart-studio.plotly.com",
-      }}
     />
   );
 }

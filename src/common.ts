@@ -30,12 +30,12 @@ export function makeAxis(
   template: Partial<LayoutAxis> = {}
 ): Partial<LayoutAxis> {
   return {
-    ...template,
-
     title,
 
-    gridcolor: "Gainsboro",
-    linecolor: "Gainsboro",
-    tickcolor: "Gainsboro",
+    ...template,
+
+    gridcolor: "GhostWhite",
+    linecolor: "GhostWhite",
+    tickcolor: "GhostWhite",
   };
 }

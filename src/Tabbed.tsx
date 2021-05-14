@@ -3,6 +3,11 @@ import { keys, map } from "lodash";
 
 type TabbedProperties = {
   /**
+   * The HTML `id` attribute of the tab container.
+   */
+  id: string;
+
+  /**
    * The initially selected tab name.
    */
   initial: string;
@@ -36,20 +41,19 @@ export class Tabbed extends Component<TabbedProperties, TabbedState> {
 
   render() {
     const { active } = this.state ?? {};
-    const { initial, components, minHeight } = this.props;
+    const { id, initial, components, minHeight } = this.props;
 
     const activeLabel = active ?? initial;
     const activeComponent = components[activeLabel];
 
     const makeTabEntry = (name: string) => {
-      const tabOnClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
-        event.preventDefault();
+      const onClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
         this.setActiveTab(name);
       };
 
       return (
         <li key={name} className={activeLabel === name ? "is-active" : ""}>
-          <a href="#" role="button" onClick={tabOnClick}>
+          <a href={`#${id}`} role="button" onClick={onClick}>
             {name}
           </a>
         </li>
@@ -57,7 +61,7 @@ export class Tabbed extends Component<TabbedProperties, TabbedState> {
     };
 
     return (
-      <section className="section">
+      <section id={id} className="section">
         <div className="tabs is-toggle is-centered">
           <ul>{map(keys(components), makeTabEntry)}</ul>
         </div>

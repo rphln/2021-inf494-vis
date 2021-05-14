@@ -1,28 +1,29 @@
 import "bulma/bulma.sass";
 
 import { Component, FormEventHandler, MouseEventHandler } from "react";
-import { groupBy, isEmpty, set } from "lodash";
-import { LayoutAxis } from "plotly.js";
+import { groupBy } from "lodash";
 
 import { QueryDatasetShortcuts, QueryDatasetForm } from "./QueryDatasetForm";
 import { buildURL } from "./common";
 import { Tabbed } from "./Tabbed";
 import { TernaryPlot } from "./TernaryPlot";
 import { ToxicityPlot } from "./ToxicityPlot";
+import { SubjectPlot } from "./SubjectPlot";
 
 export type Entry = {
   subject: string;
   dataset: string;
-  positive: number;
-  negative: number;
-  neutral: number;
-  body: number;
-  toxic: number;
-  severe_toxic: number;
-  obscene: number;
-  threat: number;
-  insult: number;
-  identity_hate: number;
+  positive_sum: number;
+  negative_sum: number;
+  neutral_sum: number;
+  body_count: number;
+  body_choice: number;
+  toxic_sum: number;
+  severe_toxic_sum: number;
+  obscene_sum: number;
+  threat_sum: number;
+  insult_sum: number;
+  identity_hate_sum: number;
 };
 
 export type Entries = {
@@ -40,9 +41,18 @@ type AppState = {
   entries: Entries;
 };
 
+const [width, height] = [1280, 800];
+
 class App extends Component<{}, AppState> {
-  queryInput?: HTMLInputElement | null;
-  appendQuery?: (value: string) => void;
+  /**
+   * @see QueryDatasetForm
+   */
+  private queryInput?: HTMLInputElement;
+
+  /**
+   * @see QueryDatasetForm
+   */
+  private appendQuery?: (value: string) => void;
 
   constructor(props: {}) {
     super(props);
@@ -122,7 +132,7 @@ class App extends Component<{}, AppState> {
    * Called when a point in a graph is clicked.
    */
   private onPointClick = ({ points: [{ text }] }: any) =>
-    this.appendQuery?.call(this, `"${text}",`);
+    this.appendQuery?.call(undefined, `"${text}",`);
 
   /**
    * Handles the query form submission.
@@ -139,10 +149,10 @@ class App extends Component<{}, AppState> {
     const { error, entries, isLoading } = this.state ?? {};
 
     const components = {
-      Polarity: (
-        <TernaryPlot
-          width={1280}
-          height={720}
+      Subject: (
+        <SubjectPlot
+          width={width}
+          height={height}
           entries={entries}
           colors={App.colorMap}
           onPointClick={this.onPointClick}
@@ -150,8 +160,17 @@ class App extends Component<{}, AppState> {
       ),
       Toxicity: (
         <ToxicityPlot
-          width={1280}
-          height={720}
+          width={width}
+          height={height}
+          entries={entries}
+          colors={App.colorMap}
+          onPointClick={this.onPointClick}
+        />
+      ),
+      Sentiment: (
+        <TernaryPlot
+          width={width}
+          height={height}
           entries={entries}
           colors={App.colorMap}
           onPointClick={this.onPointClick}
@@ -182,7 +201,12 @@ class App extends Component<{}, AppState> {
           </div>
         </section>
 
-        <Tabbed components={components} initial="Polarity" minHeight={768} />
+        <Tabbed
+          id="graph"
+          components={components}
+          initial="Toxicity"
+          minHeight={height}
+        />
       </>
     );
   }

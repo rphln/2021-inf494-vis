@@ -6,7 +6,6 @@ from sklearn import metrics
 from sklearn.datasets import fetch_20newsgroups
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.pipeline import make_pipeline
 
 # %%
@@ -22,7 +21,7 @@ y_test = list(map(lambda idx: test.target_names[idx], test.target))
 
 # %%
 
-pipeline = make_pipeline(TfidfVectorizer(), OneVsRestClassifier(SGDClassifier()))
+pipeline = make_pipeline(TfidfVectorizer(), SGDClassifier())
 pipeline.fit(x_train, y_train)
 
 # %%

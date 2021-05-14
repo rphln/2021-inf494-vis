@@ -6,7 +6,6 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.pipeline import make_pipeline
 
 # %%
@@ -25,8 +24,7 @@ y_test = test.sentiment
 
 # %%
 
-
-pipeline = make_pipeline(TfidfVectorizer(), OneVsRestClassifier(SGDClassifier()))
+pipeline = make_pipeline(TfidfVectorizer(), SGDClassifier())
 pipeline.fit(x_train, y_train)
 
 # %%
