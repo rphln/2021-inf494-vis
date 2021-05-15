@@ -1,4 +1,4 @@
-import { each, isArray } from "lodash";
+import { castArray, each } from "lodash";
 import { LayoutAxis } from "plotly.js";
 
 /**
@@ -14,7 +14,7 @@ export function buildURL(
   const url = new URL(path, "http://127.0.0.1:8000/");
 
   each(query, (value, key) => {
-    each(isArray(value) ? value : [value], (entry) => {
+    each(castArray(value), (entry) => {
       url.searchParams.append(key, entry);
     });
   });
