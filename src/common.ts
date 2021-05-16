@@ -2,15 +2,15 @@ import { castArray, each, isString } from "lodash";
 import { LayoutAxis } from "plotly.js";
 
 const PRELOADED = {
-  "": "/data/default.json",
+  "": "./data/default.json",
 
-  "positive and toxic": "/data/positive_and_toxic.json",
-  "positive or negative": "/data/positive_or_negative.json",
-  "identity_hate and insult": "/data/identity_hate_and_insult.json",
+  "positive and toxic": "./data/positive_and_toxic.json",
+  "positive or negative": "./data/positive_or_negative.json",
+  "identity_hate and insult": "./data/identity_hate_and_insult.json",
   "toxic or severe_toxic or obscene or threat or insult or identity_hate":
-    "/data/any_toxicity.json",
+    "./data/any_toxicity.json",
 
-  'body.str.contains("Brazil")': "/data/brazil.json",
+  'body.str.contains("Brazil")': "./data/brazil.json",
 };
 
 /**
