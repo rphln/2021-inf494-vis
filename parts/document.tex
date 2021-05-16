@@ -1,0 +1,79 @@
+A ferramenta está disponível para uso com algumas limitações na página \url{https://rphln.github.io/Moody}.
+
+\section{Abordagem proposta}
+
+A ferramenta proposta foi planejada de modo a permitir o estudo simultâneo de diversos conjuntos de textos, segmentados automaticamente em tópicos pré-definidos. Seu objetivo é capacitar o pesquisador a responder perguntas sobre o comportamento agregado dos autores de tais textos por meio de análises de conduta (\textit{toxicity}) e de sentimento (\textit{sentiment}).
+
+Ao iniciar a ferramenta, o pesquisador é apresentado à análise de conduta, ilustrada na figura \ref{fig:toxicity-default}: nela, é possível observar quais tópicos estão relacionaos a comportamentos considerados negativos: obscenidade, insultos, ameaças, preconceito e toxicidade. Por se tratar de um problema de natureza multivariada, a escolha de visualização realizada foi o paralelo de coordenadas, facilitando a descoberta de padrões predominantes e exceções. O gráfico apresenta a proporção dos textos do conjunto em que há a ocorrência dos diversos fatores negativos -- onde um conjunto de textos com traços de má conduta é caracterizado por sua alta, incidência absoluta ou relativa, de tais fatores.
+
+\begin{figure}[hbtp]
+    \centering
+    \includegraphics[width=\columnwidth]{images/toxicity-default}
+    \caption{Gráfico de conduta}
+    \label{fig:toxicity-default}
+\end{figure}
+
+O segundo tipo de estudo possível é a análise de sentimento: os textos em estudo são classificados como "positivos", "negativos" ou "neutros", agregados em seus respectivos tópicos e fonts, e então distribuídos em um gráfico ternário, representando a taxa de ocorrência de cada sentimento no respectivo tópico. Assim como o estudo de conduta, este é um problema multivariado, porém difere-se pelo fato de que cada texto pode apenas assumir um único sentimento. Por padrão, o gráfico permite o estudo das tendências a nível de \emph{corpus} e por tópicos.
+
+\begin{figure}[hbtp]
+    \centering
+    \includegraphics[width=\columnwidth]{images/sentiment-default}
+    \caption{Gráfico da distribuição de sentimentos, segmentada pelas fontes dos textos e por tópicos. O ponto mais próximo ao centro representa um tópico com o maior grau de polarização dentre seus pares.}
+    \label{fig:sentiment-default}
+\end{figure}
+
+Por fim, o gráfico de tópicos permite ao pesquisador estudar a segmentação dos textos nos diversos tópicos. Tal estudo pode ser associado aos resultados anteriores -- talvez explicando que a existência exceções na taxa de obscenidade ou positividade em determinado tópico seja por um número insuficiente de amostras -- ou pode ser feito de forma isolada -- por exemplo, observando a ocorrência de tópicos que não deveriam estar no conjunto em estudo.
+
+\begin{figure}[hbtp]
+    \centering
+    \includegraphics[width=\columnwidth]{images/subject-default}
+    \caption{Distribuição de tópicos}
+    \label{fig:subject-default}
+\end{figure}
+
+\section{Estudo por consultas}
+
+A forma de interação mais poderosa exposta ao pesquisador pela ferramenta é a caixa de consultas. Durante a fase de planejamento, ``não limitar seu usuário a um conjunto perguntas fixas'' foi um dos requisitos levantados. Através das consultas, se faz possível acessar diretamente os conjuntos de textos e seus atributos com a finalidade de realizar filtragens tão complexas quanto desejado, atualizando todos gráficos de forma a refletir a seleção dos dados. Esta abordagem, contudo, tem como custo uma a curva de aprendizagem atrelada à linguagem utilizada\footnote{\url{https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html}\label{url:pandas-query}} para consultas e o tempo necessário para realizar as operações de filtragem.
+
+A filtragem através de consultas permite ao pesquisador responder perguntas como ``quais tópicos geram o maior volume de textos preconceituosos com insultos?'', ``qual é o sentimento predominante em textos com pelo menos um tipo de má conduta?'', ``quais são as principais origens e características de textos positivos, porém tóxicos?'', ou mesmo ``qual é o sentimento predominante em textos que mencionam o Brasil?''.
+
+\begin{figure}[hbtp]
+    \centering
+    \includegraphics[width=\columnwidth]{images/query}
+    \caption{Caixa de consultas contendo a filtragem que representa um texto simultâneamente positivo e tóxico.}
+    \label{fig:query}
+\end{figure}
+
+Algumas formas de interação são possíveis ao se realizar uma consulta: os atributos sob os quais a filtragem pode ser feita são exibidos como botões para acesso rápido e é possível adicionar referências a tópicos por meio de cliques nos gráficos de conduta e de sentimento.
+
+\section{Detalhes de implementação}
+
+A ferramenta foi implementada como uma página \textit{web}, composta pela interface gráfica, desenvolvida em JavaScript com as bibliotecas React\footnote{\url{https://reactjs.org/}} e Plotly\footnote{\url{https://plotly.com/graphing-libraries/}}, e o servidor responsável pelo processamento dos dados e a execução das consultas, desenvolvido em Python com as bibliotecas scikit-learn\footnote{\url{https://scikit-learn.org/stable/}} e pandas\footnote{\url{https://pandas.pydata.org/}}.
+
+React é uma biblioteca amplamente utilizada na área de desenvolvimento \textit{web} que simplifica o desenvolvimento de páginas interativas. Embora as interações da ferramenta sejam relativamente simples, o uso da biblioteca acelerou o processo de prototipagem: cada componente da página -- isto é, a caixa de consulta e os três gráficos -- foi desenvolvido de forma isolada, expondo apenas uma interface mínima para saída e entrada de dados.
+
+A escolha da biblioteca responsável pelos gráficos foi marcada por dificuldades: algumas bibliotecas de baixo-nível de abstração dificultaram o processo de prototipagem, enquanto outras de alto-nível se mostraram engessadas, impossibilitando que certos tipos de visualizações fossem exploradas durante o processo de desenvolvimento. No escopo deste projeto, a biblioteca Plotly foi capaz de cumprir os dois objetivos, disponibilizando diversos tipos de visualizações em configuráveis alto-nível.
+
+A escolha da linguagem Python para o servidor se deu por sua vasta seleção de bibliotecas relacionadas a tratamento de dados e aprendizagem de máquina. Em particular, a biblioteca scikit-learn foi utilizada por facilitar o desenvolvimento de \textit{pipelines} de classificação, tratando do pré-processamento dos dados e do treinamento e execução dos modelos utilizados. A ferramenta se baseia nos resultados produzidos por três classificadores distintos, treinados sob conjuntos de dados públicos: de sentimentos\footnote{\url{https://www.kaggle.com/c/tweet-sentiment-extraction/}}, de conduta\footnote{\url{https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge}} e de assuntos\footnote{\url{https://scikit-learn.org/stable/datasets/real_world.html\#the-20-newsgroups-text-dataset}}.
+
+A biblioteca pandas, inicialmente utilizada por suas capabilidades de organização de dados em alto-volume, também se tornou o principal componente das funcionalidades relacionadas a consultas dos dados -- sendo permitido o uso de sua total capacidade\ref{url:pandas-query} ao pesquisador. Os dados carregados e processados, porém não filtrados por consultas, são salvos em um \textit{cache} no disco, acelerando as requisições da ordem de minutos para segundos. Dado a gama de possíveis consultas possíveis de serem realizadas, combinado à imprevisibilidade das mesmas, foi decidido que guardar o resultado do processamento após a consultas é inviável.
+
+\section{Avaliação das escolhas realizadas}
+
+A ferramenta tenta atender as boas práticas de visualização de dados
+Durante o processo de desenvolvimento da ferramenta, os devidos cuidados para que esta cumprisse as boas práticas da visualização de dados foram tomados: o uso de cores é limitado, sendo utilizado apenas para diferenciar entre os conjuntos de dados originais -- laranja para o Reddit, azul para o Telegram, ambos retirados de uma paleta de cores testada para daltônicos; os gráficos não contêm informações supérflues, permitem a inclusão ou exclusão de determinados itens, \textit{zooming} e \textit{panning}.
+
+Dada a natureza multivariada das informações exibidas, algumas escolhas de gráficos não-cotidianos -- especificamente, o gráfico ternário e o paralelo de coordenadas -- foram feitas. Contudo, espera-se que um pesquisador possa se familiarizar com tais gráficos após um breve período.
+
+As maiores deficiências da ferramenta se encontram na ausência de \textit{linking} combinado ao \textit{brushing} entre as visualizações e na curva de aprendizado da linguagem de consultas. Tais limitações não serão corridigas na presente versão deste trabalho, sendo então recomendadas como possíveis tópicos a serem abordados caso haja interesse em evoluir a ferramente.
+
+A primeira deficiência pode ser contornada em parte ao utilizar consultas para selecionar apenas os tópicos de interesse. Isto, contudo, não é capaz de manter o contexto durante o estudo, portanto entende-se que adicionar a combinação de \textit{linking} e \textit{brushing} seria uma forma de enriquecer o processo de análise.
+
+A segunda limitação foi uma escolha consciente de forma a não limitar o pesquisador. Contudo, apresentar ao usuário a construção de consultas de forma interativa e guiada por padrão, permitindo-o ativar um ``modo avançado'' que expõe a interface interna que está em uso atualmente.
+
+\begin{figure*}[hbtp]
+    \centering
+    \includegraphics[width=\textwidth]{images/overview}
+    \caption{Visão geral da ferramenta em sua configuração inicial.}
+    \label{fig:overview}
+\end{figure*}
