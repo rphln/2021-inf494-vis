@@ -81,6 +81,13 @@ class App extends Component<{}, AppState> {
     "threat",
     "insult",
     "identity_hate",
+
+    // Preloaded queries
+    "positive or negative",
+    "positive and toxic",
+    "identity_hate and insult",
+    "toxic or severe_toxic or obscene or threat or insult or identity_hate",
+    'body.str.contains("Brazil")',
   ];
 
   static colorMap: ColorMap = {
