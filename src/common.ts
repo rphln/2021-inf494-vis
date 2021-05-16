@@ -1,4 +1,4 @@
-import { castArray, each, isMatch, isString } from "lodash";
+import { castArray, each, isString } from "lodash";
 import { LayoutAxis } from "plotly.js";
 
 const PRELOADED = {
