@@ -27,3 +27,15 @@ uvicorn moody:app --reload --reload-dir moody --host 127.0.0.1 --port 8000
 ```
 
 Para acessar a ferramenta, entre na [página especificada](http://127.0.0.1:8000/static/index.html).
+
+# Como treinar os classificadores?
+
+Os classificadores podem ser treinados novamente com os arquivos disponibilizados.
+
+``` bash
+python -m moody.train-sentiment-classifier
+python -m moody.train-subject-classifier
+python -m moody.train-toxicity-classifier
+```
+
+Os arquivos referentes a cada classificador estão na pasta `moody`.
