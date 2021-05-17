@@ -97,7 +97,7 @@ class App extends Component<{}, AppState> {
 
   async refresh() {
     this.setState({ isLoading: true }, async () => {
-      const endpoint = buildURL("/", { query: this.state.query ?? "" });
+      const endpoint = buildURL("/data/", { query: this.state.query ?? "" });
 
       const response = await fetch(endpoint);
       const { data, detail } = await response.json();

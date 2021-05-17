@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pandas import DataFrame
 from sklearn.pipeline import Pipeline
 from tqdm import tqdm
@@ -18,12 +19,15 @@ CACHE = Path("var/cache.pkl")
 REDDIT = Path("var/The Pushshift Reddit Dataset.zst")
 TELEGRAM = Path("var/The Pushshift Telegram Dataset.zst")
 
-ROWS = 3_000_000
+ROWS = 1_000_000
 
 CATEGORIES = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
 
 app = FastAPI(title=__name__)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
+
+# Allow the Python server to deploy the pre-built JavaScript front-end.
+app.mount("/static/", StaticFiles(directory="build"), name="static")
 
 
 def load_dataset(key: str, source: Path):
@@ -123,8 +127,8 @@ def parse() -> DataFrame:
     return corpus
 
 
-@app.get("/")
-async def index(query: Optional[str] = None):
+@app.get("/data/")
+async def data(query: Optional[str] = None):
     corpus = parse()
 
     if query:
